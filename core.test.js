@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {analyze,toCSV}=require('./core.js');
+const records=require('./mock-data.js');
+const a=analyze(records[0]),b=analyze(records[1]),c=analyze(records[2]);
+assert.equal(a.totalMinutes,120);assert.equal(a.sameActor,true);assert.equal(a.sameTime,true);assert.equal(a.gaps,0);
+assert.equal(b.totalMinutes,360);assert.equal(b.repeated,1);assert.equal(b.gaps,1);assert.equal(b.sameActor,false);assert.equal(b.sameTime,false);
+assert.equal(c.sameActor,null);assert.equal(c.sameTime,null);assert(c.flags.includes('Responsável ausente'));
+assert.equal(analyze({...records[0],events:[...records[0].events].reverse()}).status,'Despachado');
+assert.throws(()=>analyze({...records[0],events:[]}));
+assert.throws(()=>analyze({...records[0],events:[{at:'invalid'}]}));
+const csv=toCSV([a,b,c]);assert.equal(csv.split('\r\n').length,4);assert(csv.includes('STATUS_5'));assert(csv.includes('Indeterminado'));
+assert(toCSV([{...a,lastActor:'=1+1'}]).includes("\"'=1+1\""));
+console.log('Validação aprovada: durações, limiar, repetição, ausência, correlações, ordenação, rejeição de datas e CSV.');
