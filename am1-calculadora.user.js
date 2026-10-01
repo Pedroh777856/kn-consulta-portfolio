@@ -1,0 +1,81 @@
+// ==UserScript==
+// @name         Calculadora De Pacotes AM1 — Demo
+// @namespace    am1-portfolio
+// @version      1.0.0
+// @description  Contagem local de auditorias por data e ciclo, com exemplo fictício.
+// @match        http://127.0.0.1:8766/am1.html
+// @match        http://localhost:8766/am1.html
+// @match        https://pedroh777856.github.io/kn-consulta-portfolio/am1.html
+// @grant        none
+// @run-at       document-end
+// ==/UserScript==
+(() => {
+ 'use strict';
+ if(document.title!=='Calculadora De Pacotes AM1'||document.getElementById('am1-extension-active'))return;
+ document.querySelector('main')?.remove();
+ const mount=document.createElement('div');mount.innerHTML="<main><header><div><h1>Calculadora De Pacotes AM1</h1><p>Faltantes, a mais e corretos por data e ciclo.</p></div><span class=\"badge\">DEMONSTRAÇÃO • DADOS FICTÍCIOS</span></header>\n<section><h2>Dados para análise</h2><button id=\"sample\">Carregar exemplo fictício</button><a href=\"am1-demo.csv\" download>Baixar CSV de exemplo</a><p>Ou escolha um ou mais CSVs. O processamento ocorre neste navegador; os arquivos não são enviados.</p><label for=\"files\">Arquivos CSV <input id=\"files\" type=\"file\" accept=\".csv\" multiple></label><button id=\"import\">Analisar arquivos</button><p id=\"message\" role=\"status\"></p></section>\n<section><label for=\"date\">Data <select id=\"date\"></select></label><label for=\"cycle\">Ciclo <select id=\"cycle\"></select></label><label><input id=\"latest\" type=\"checkbox\"> Manter última auditoria por pacote, data e ciclo</label><p id=\"mode\">Modo padrão: cada linha válida conta como um registro de auditoria.</p><div id=\"metrics\" class=\"metrics\"></div></section>\n<section><h2>Resumo do ciclo selecionado por data</h2><button id=\"export\" disabled>Exportar resumo CSV</button><div class=\"scroll\"><table><thead><tr><th>Data</th><th>Total</th><th>Faltantes</th><th>A mais</th><th>Corretos</th><th>Outros</th><th>Divergências</th></tr></thead><tbody id=\"summary\"></tbody></table></div><p>Divergências = faltantes + a mais. “Outros” reúne estados não reconhecidos. A calculadora conta classificações informadas no CSV; não estima perdas físicas.</p></section><footer><a href=\"index.html\">Voltar ao portfólio</a> · <a href=\"am1-README.md\">Regras e documentação</a></footer></main>";document.body.append(mount);
+ const style=document.createElement('style');style.textContent="\n*{box-sizing:border-box}body{margin:0;font:16px system-ui;background:#edf3f7;color:#183044}main{max-width:1120px;margin:auto;padding:28px}header{display:flex;justify-content:space-between;align-items:center;gap:16px}h1{margin:10px 0;font-size:32px}.badge{background:#d4f3e8;color:#155342;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:bold}section{background:white;border-radius:14px;padding:24px;margin:20px 0;border:1px solid #d9e3eb}button{background:#086d72;color:white;border:0;padding:12px 18px;border-radius:8px;cursor:pointer;margin:6px 8px 6px 0}button:disabled{opacity:.5}select,input{padding:10px;font:inherit}label{display:inline-block;margin:8px 16px 8px 0}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}.metric{padding:18px;background:#f1f6f9;border-radius:10px;border-top:4px solid #086d72}.metric strong{display:block;font-size:34px;margin-top:8px}.metric:nth-child(2){border-color:#c23b47}.metric:nth-child(3){border-color:#c47a12}.metric:nth-child(4){border-color:#24865f}table{width:100%;border-collapse:collapse}th,td{padding:14px;border-bottom:1px solid #d9e3eb;text-align:left}th{background:#f1f6f9}.scroll{overflow:auto}#message{color:#415c6c;white-space:pre-wrap}a{color:#086d72}@media(max-width:600px){header{display:block}main{padding:16px}section{padding:16px}h1{font-size:26px}}\n";document.head.append(style);
+ const badge=document.createElement('p');badge.id='am1-extension-active';badge.textContent='Tampermonkey ativo • Calculadora AM1 demonstrativa';document.querySelector('header').append(badge);
+ (function(root){
+ 'use strict';
+ function parse(text){
+  text=text.replace(/^\uFEFF/,'');
+  const first=text.split(/\r?\n/)[0]; const delimiter=first.includes(';')?';':',';
+  const rows=[];let row=[],cell='',quoted=false;
+  for(let i=0;i<text.length;i++){
+   const c=text[i];
+   if(c==='"'){if(quoted&&text[i+1]==='"'){cell+='"';i++;}else quoted=!quoted;}
+   else if(c===delimiter&&!quoted){row.push(cell);cell='';}
+   else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row);row=[];cell='';}
+   else cell+=c;
+  }
+  if(quoted)throw Error('CSV com aspas não fechadas.');
+  row.push(cell);if(row.some(v=>v.trim()))rows.push(row);
+  if(!rows.length)throw Error('CSV vazio.');
+  const headers=rows.shift().map(v=>v.trim());
+  const required=['Shipment ID','Data auditoria','ID da rota','Estado'];
+  for(const h of required)if(!headers.includes(h))throw Error('Coluna obrigatória ausente: '+h);
+  const accepted=[],rejected=[];
+  rows.forEach((values,index)=>{
+   const get=h=>(values[headers.indexOf(h)]||'').trim();
+   const raw=get('Data auditoria');const m=raw.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+   const date=m?new Date(Date.UTC(+m[3],+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0))):null;
+   if(values.length!==headers.length||!get('Shipment ID')||!m||date.getUTCDate()!==+m[1]||date.getUTCMonth()!==+m[2]-1||date.getUTCFullYear()!==+m[3]||+(m[4]||0)>23||+(m[5]||0)>59||+(m[6]||0)>59||!get('Estado')){rejected.push(index+2);return;}
+   const cycle=get('ID da rota').match(/_([A-Z]+\d+)\b/i)?.[1].toUpperCase()||'SEM CICLO';
+   const state=get('Estado').toLowerCase().replace(/\s+/g,' ');
+   accepted.push({id:get('Shipment ID'),date:raw.slice(0,10),timestamp:+date,cycle,state,route:get('ID da rota')});
+  });
+  return {accepted,rejected};
+ }
+ function select(records,date,cycle,latest=false){
+  const filtered=records.filter(r=>(!date||r.date===date)&&(!cycle||r.cycle===cycle));
+  if(!latest)return filtered;
+  const map=new Map();
+  for(const r of filtered){const key=JSON.stringify([r.id,r.date,r.cycle]);if(!map.has(key)||r.timestamp>=map.get(key).timestamp)map.set(key,r);}
+  return [...map.values()];
+ }
+ function count(records){const counts={total:records.length,missing:0,extra:0,correct:0,other:0,divergences:0};for(const r of records){if(r.state==='faltante')counts.missing++;else if(r.state==='a mais')counts.extra++;else if(r.state==='correto')counts.correct++;else counts.other++;}counts.divergences=counts.missing+counts.extra;return counts;}
+ function summary(records,cycle='AM1',latest=false){return [...new Set(records.map(r=>r.date))].sort((a,b)=>a.split('/').reverse().join('').localeCompare(b.split('/').reverse().join(''))).map(date=>({date,...count(select(records,date,cycle,latest))})).filter(r=>r.total);}
+ const api={parse,select,count,summary};if(typeof module!=='undefined')module.exports=api;else root.AM1Core=api;
+})(typeof globalThis!=='undefined'?globalThis:this);
+
+ const AM1_SAMPLE="Shipment ID,Placa,Data auditoria,ID da rota,Estado,Rep auditoria\nDEMO-AM1-001,DEMO-A,15/01/2026 08:00:00,A01_AM1 | DEMO-ROTA-A,Faltante,Operador A\nDEMO-AM1-002,DEMO-A,15/01/2026 08:05:00,A01_AM1 | DEMO-ROTA-A,Faltante,Operador A\nDEMO-AM1-003,DEMO-B,15/01/2026 08:10:00,B02_AM1 | DEMO-ROTA-B,A mais,Operador B\nDEMO-AM1-004,DEMO-B,15/01/2026 08:15:00,B02_AM1 | DEMO-ROTA-B,Correto,Operador B\nDEMO-AM1-005,DEMO-A,15/01/2026 08:20:00,A01_AM1 | DEMO-ROTA-A,Correto,Operador A\nDEMO-AM1-001,DEMO-A,15/01/2026 09:00:00,A01_AM1 | DEMO-ROTA-A,Correto,Operador A\nDEMO-AM1-006,DEMO-C,15/01/2026 14:00:00,C03_PM1 | DEMO-ROTA-C,Faltante,Operador C\nDEMO-AM1-007,DEMO-A,16/01/2026 08:00:00,A01_AM1 | DEMO-ROTA-A,Faltante,Operador A\nDEMO-AM1-008,DEMO-A,16/01/2026 08:05:00,A01_AM1 | DEMO-ROTA-A,A mais,Operador A\nDEMO-AM1-009,DEMO-B,16/01/2026 08:10:00,B02_AM1 | DEMO-ROTA-B,Correto,Operador B\n";
+(function(){
+ 'use strict';const $=id=>document.getElementById(id);let records=[];
+ function render(){const latest=$('latest').checked,cycle=$('cycle').value,date=$('date').value;const stats=AM1Core.count(AM1Core.select(records,date,cycle,latest));$('metrics').replaceChildren();
+  for(const [label,key] of [['Total','total'],['Faltantes','missing'],['A mais','extra'],['Corretos','correct'],['Outros','other'],['Divergências','divergences']]){const card=document.createElement('div');card.className='metric';card.textContent=label;const number=document.createElement('strong');number.textContent=stats[key];card.append(number);$('metrics').append(card);}
+  $('mode').textContent=latest?'Última auditoria por pacote + data + ciclo. Em empate de horário, prevalece a última linha importada.':'Cada linha válida conta como um registro de auditoria, incluindo repetições.';
+  $('summary').replaceChildren();for(const r of AM1Core.summary(records,cycle,latest)){const tr=document.createElement('tr');for(const key of ['date','total','missing','extra','correct','other','divergences']){const td=document.createElement('td');td.textContent=r[key];tr.append(td);}$('summary').append(tr);}$('export').disabled=!records.length;
+ }
+ function load(texts){try{let next=[],invalid=0;for(const text of texts){const result=AM1Core.parse(text);next.push(...result.accepted);invalid+=result.rejected.length;}records=next;
+  for(const [id,values]of [['date',[...new Set(records.map(r=>r.date))].sort((a,b)=>a.split('/').reverse().join('').localeCompare(b.split('/').reverse().join('')))],['cycle',[...new Set(records.map(r=>r.cycle))].sort()]]){$(id).replaceChildren();for(const value of values){const opt=document.createElement('option');opt.value=value;opt.textContent=value;$(id).append(opt);}}
+  if([...$('cycle').options].some(o=>o.value==='AM1'))$('cycle').value='AM1';$('message').textContent=`${records.length} linhas válidas • ${invalid} linhas rejeitadas • ${texts.length} arquivo(s).`;render();
+ }catch(e){$('message').textContent='Erro: '+e.message+' A última análise válida foi preservada.';}}
+ $('sample').onclick=()=>load([AM1_SAMPLE]);
+ $('import').onclick=async()=>{if(!$('files').files.length){$('message').textContent='Selecione ao menos um CSV.';return;}try{load(await Promise.all([...$('files').files].map(f=>f.text())));}catch(e){$('message').textContent='Não foi possível ler os arquivos: '+e.message;}};
+ for(const id of ['date','cycle','latest'])$(id).onchange=render;
+ $('export').onclick=()=>{const rows=AM1Core.summary(records,$('cycle').value,$('latest').checked);const csv='\uFEFF'+[['Data','Total','Faltantes','A mais','Corretos','Outros','Divergencias'],...rows.map(r=>[r.date,r.total,r.missing,r.extra,r.correct,r.other,r.divergences])].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='am1-resumo-demo.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+ load([AM1_SAMPLE]);
+})();
+
+})();

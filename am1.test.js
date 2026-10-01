@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');const c=require('./am1-core.js');
+const rows=c.parse(fs.readFileSync(__dirname+'/am1-demo.csv','utf8')).accepted;
+assert.equal(rows.length,10);
+assert.deepEqual(c.count(c.select(rows,'15/01/2026','AM1')),{total:6,missing:2,extra:1,correct:3,other:0,divergences:3});
+assert.deepEqual(c.count(c.select(rows,'15/01/2026','AM1',true)),{total:5,missing:1,extra:1,correct:3,other:0,divergences:2});
+assert.equal(c.count(c.select(rows,'16/01/2026','AM1')).total,3);assert.equal(c.count(c.select(rows,'15/01/2026','PM1')).missing,1);
+const header='Shipment ID;Data auditoria;ID da rota;Estado\r\n';
+assert.equal(c.parse('\uFEFF'+header+'"DEMO;X";15/01/2026 08:00:00;A01_AM10 | DEMO;"A mais"').accepted[0].cycle,'AM10');
+assert.equal(c.parse(header+'DEMO;31/02/2026;A01_AM1;Faltante').rejected.length,1);
+assert.equal(c.count(c.parse(header+'DEMO;15/01/2026;A01_AM1;Pendente').accepted).other,1);
+assert.equal(c.parse(header+'"DEMO\nX";15/01/2026;A01_AM1;Correto').accepted.length,1);
+assert.throws(()=>c.parse('id,estado\nx,y'));assert.throws(()=>c.parse(header+'"open'));
+assert.equal(c.summary(rows).length,2);console.log('AM1: contagens, filtros, deduplicação opcional, CSV e validação aprovados.');

@@ -63,3 +63,7 @@ A demonstração evidencia consolidação e estruturação dos dados. Não foram
 
 ## Publicação e autoria
 Revise os textos para garantir que representem sua participação no projeto. Defina a licença e a atribuição de autoria antes de disponibilizar publicamente o código; este pacote não presume uma licença. Use somente capturas da demonstração e links públicos após publicação autorizada.
+
+## Calculadora De Pacotes AM1
+
+Segundo projeto do portfólio: [documentação](am1-README.md), [página demonstrativa](am1.html), [script Tampermonkey](am1-calculadora.user.js) e [CSV fictício](am1-demo.csv). Para usar o site sem hospedagem, baixe am1.html e abra no navegador.
