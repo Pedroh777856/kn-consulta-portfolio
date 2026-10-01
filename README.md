@@ -26,7 +26,20 @@ IDs repetidos são deduplicados; IDs fora do mock são informados na tela. Nenhu
 ## Tecnologias e arquitetura
 JavaScript puro, HTML, CSS, DOM e Blob para download local. core.js contém regras e serialização; mock-data.js fornece a fonte fictícia; app.js controla a interface. mock-data.json é o espelho intercambiável do mock. Não há backend, API, autenticação ou dependência externa.
 
-O arquivo kn-consulta.user.js ilustra a estrutura de um UserScript Tampermonkey com escopo restrito à página local e apenas adiciona um indicador. A demonstração funciona sem ele. Para testá-lo, importe-o no Tampermonkey e habilite acesso a arquivos locais; políticas do navegador podem impedir a execução. Ele não é um coletor de produção. A integração original com interfaces dinâmicas, persistência entre páginas e navegação operacional não foi reproduzida.
+## Instalar na extensão Tampermonkey
+
+O arquivo **kn-consulta.user.js v2.0** é o script completo da demonstração. Ele inclui os dados fictícios, o motor de análise, a interface de consulta em lote e a exportação CSV dentro do próprio UserScript. Não precisa importar bibliotecas externas.
+
+1. Instale a extensão Tampermonkey pelo canal oficial do seu navegador.
+2. Abra o painel da extensão e escolha criar um novo script.
+3. Substitua todo o conteúdo pelo arquivo kn-consulta.user.js e salve.
+4. Abra a demonstração em http://127.0.0.1:8765/ com o servidor local ativo, ou em http://localhost:8765/. O script também está preparado para o endereço do GitHub Pages deste repositório, se essa hospedagem for ativada.
+5. Confirme o selo “Tampermonkey ativo • Script completo v2.0”. Sem esse selo, a página pode estar executando apenas a versão web.
+6. Analise DEMO-001, DEMO-002 e DEMO-003 e exporte o CSV.
+
+A extensão precisa estar habilitada e autorizada a executar scripts nesse endereço. O servidor local serve a página; os dados e a análise usados pelo UserScript estão embutidos no script. A versão web continua disponível para explorar a mesma lógica sem extensão.
+
+O escopo de execução está limitado aos endereços demonstrativos listados no cabeçalho. Não instale em sistemas reais nem amplie o escopo para páginas operacionais: este script usa apenas dados fictícios e não coleta registros reais. Navegação entre páginas operacionais, extração de interfaces internas e persistência entre páginas não fazem parte desta versão.
 
 ## Regras e limitações
 Datas ISO 8601 em UTC; intervalos em minutos. O tempo total vai do primeiro ao último evento registrado e não equivale automaticamente ao tempo de processamento ativo. O limiar de 120 minutos é ilustrativo, sem significado de SLA. Igualdade de horários significa mesmo instante exato, sem tolerância. Responsável ou evento faltante torna a comparação indeterminada. Correlação não comprova causalidade. Alertas requerem revisão humana.
